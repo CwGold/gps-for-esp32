@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 GPS Capture</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 24px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            display: none;
+        }
+        .status-loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            display: block !important;
+        }
+        .status-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            display: block !important;
+        }
+        .status-error {
+            background: #ffebee;
+            color: #c62828;
+            display: block !important;
+        }
+        .coords {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">📍</div>
+        <h1>ESP32 GPS Capture</h1>
+        <div class="subtitle">Capture your location securely, then auto-fill your ESP32 config</div>
+
+        <button id="captureBtn" onclick="captureLocation()">Capture GPS Location</button>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const ESP32_IP = '192.168.4.1';  // Change if using different IP
+
+        function captureLocation() {
+            const statusDiv = document.getElementById('status');
+            const btn = document.getElementById('captureBtn');
+
+            if (!navigator.geolocation) {
+                statusDiv.className = 'status-error';
+                statusDiv.innerHTML = '❌ <b>Error:</b> Geolocation not supported by your browser';
+                return;
+            }
+
+            btn.disabled = true;
+            statusDiv.className = 'status-loading';
+            statusDiv.innerHTML = '🔍 <b>Requesting GPS...</b><br>Please allow location access when prompted';
+
+            navigator.geolocation.getCurrentPosition(
+                // Success callback
+                function(position) {
+                    const lat = position.coords.latitude.toFixed(6);
+                    const lon = position.coords.longitude.toFixed(6);
+                    const accuracy = position.coords.accuracy.toFixed(0);
+
+                    statusDiv.className = 'status-success';
+                    statusDiv.innerHTML = `
+                        ✅ <b>Location captured!</b><br>
+                        <div class="coords">
+                            Latitude: ${lat}<br>
+                            Longitude: ${lon}<br>
+                            Accuracy: ±${accuracy}m
+                        </div>
+                        <b>Redirecting to ESP32...</b>
+                    `;
+
+                    // Build URL with coordinates
+                    const esp32Url = `http://${ESP32_IP}/?lat=${lat}&lon=${lon}`;
+
+                    // Auto-redirect after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = esp32Url;
+                    }, 2000);
+                },
+
+                // Error callback
+                function(error) {
+                    btn.disabled = false;
+                    let errorMsg = '';
+
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = '❌ <b>Permission denied</b><br>Please allow location access in your browser settings and try again';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = '❌ <b>Position unavailable</b><br>GPS signal not available. Try moving to an open area';
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = '❌ <b>Request timeout</b><br>GPS took too long to respond. Try again';
+                            break;
+                        default:
+                            errorMsg = '❌ <b>Unknown error</b><br>' + error.message;
+                    }
+
+                    statusDiv.className = 'status-error';
+                    statusDiv.innerHTML = errorMsg;
+                },
+
+                // Options
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
+        }
+    </script>
+</body>
+</html>
