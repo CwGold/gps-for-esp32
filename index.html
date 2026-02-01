@@ -3,103 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ESP32 GPS Capture</title>
+    <title>GRIZCAM GPS Capture</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Capture GPS location for GRIZCAM camera setup">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="manifest.json">
+
+    <!-- iOS PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GRIZCAM GPS">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 500px;
-            margin: 50px auto;
-            padding: 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
+
         .card {
             background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            border-radius: 16px;
+            padding: 40px 30px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
+
+        .icon {
+            font-size: 64px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
         h1 {
-            margin: 0 0 10px 0;
+            text-align: center;
             color: #333;
-            font-size: 24px;
+            font-size: 28px;
+            margin-bottom: 10px;
         }
+
         .subtitle {
+            text-align: center;
             color: #666;
             font-size: 14px;
-            margin-bottom: 25px;
+            margin-bottom: 30px;
         }
+
         button {
             width: 100%;
-            padding: 14px;
+            padding: 18px;
             background: #667eea;
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
+            border-radius: 12px;
+            font-size: 18px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            margin-bottom: 15px;
         }
+
         button:hover:not(:disabled) {
             background: #5568d3;
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
         }
+
         button:disabled {
             background: #ccc;
             cursor: not-allowed;
+            transform: none;
         }
+
         #status {
             margin-top: 20px;
-            padding: 15px;
-            border-radius: 8px;
+            padding: 16px;
+            border-radius: 10px;
             font-size: 14px;
             line-height: 1.6;
             display: none;
         }
+
         .status-loading {
             background: #e3f2fd;
             color: #1976d2;
             display: block !important;
         }
+
         .status-success {
             background: #e8f5e9;
             color: #2e7d32;
             display: block !important;
         }
+
         .status-error {
             background: #ffebee;
             color: #c62828;
             display: block !important;
         }
+
         .coords {
-            margin: 10px 0;
-            padding: 10px;
+            margin: 12px 0;
+            padding: 12px;
             background: #f5f5f5;
-            border-radius: 6px;
+            border-radius: 8px;
             font-family: 'Courier New', monospace;
             font-size: 13px;
         }
-        .icon {
-            font-size: 48px;
-            margin-bottom: 15px;
+
+        .install-prompt {
+            background: #fff3cd;
+            color: #856404;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .install-prompt button {
+            margin-top: 10px;
+            background: #ff9800;
+            font-size: 14px;
+            padding: 12px;
+        }
+
+        .install-prompt button:hover {
+            background: #f57c00;
         }
     </style>
 </head>
 <body>
     <div class="card">
         <div class="icon">📍</div>
-        <h1>ESP32 GPS Capture</h1>
-        <div class="subtitle">Capture your location securely, then auto-fill your ESP32 config</div>
+        <h1>GRIZCAM GPS</h1>
+        <div class="subtitle">Camera Location Capture</div>
 
-        <button id="captureBtn" onclick="captureLocation()">Capture GPS Location</button>
+        <!-- Install prompt for non-installed users -->
+        <div id="installPrompt" class="install-prompt">
+            <strong>💡 Install this app!</strong><br>
+            <small>Add to home screen for quick access</small>
+            <button id="installBtn">📲 Install App</button>
+        </div>
+
+        <button id="captureBtn" onclick="captureLocation()">📍 Capture GPS Location</button>
 
         <div id="status"></div>
     </div>
 
     <script>
-        const ESP32_IP = '192.168.4.1';  // Change if using different IP
+        const ESP32_IP = '192.168.4.1';
+        let deferredPrompt;
+
+        // PWA Install Prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installPrompt').style.display = 'block';
+        });
+
+        document.getElementById('installBtn').addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`Install outcome: ${outcome}`);
+            deferredPrompt = null;
+            document.getElementById('installPrompt').style.display = 'none';
+        });
+
+        // Hide install prompt if already installed
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('installPrompt').style.display = 'none';
+        });
 
         function captureLocation() {
             const statusDiv = document.getElementById('status');
@@ -112,11 +202,12 @@
             }
 
             btn.disabled = true;
+            btn.textContent = '🔍 Getting GPS...';
             statusDiv.className = 'status-loading';
             statusDiv.innerHTML = '🔍 <b>Requesting GPS...</b><br>Please allow location access when prompted';
 
             navigator.geolocation.getCurrentPosition(
-                // Success callback
+                // Success
                 function(position) {
                     const lat = position.coords.latitude.toFixed(6);
                     const lon = position.coords.longitude.toFixed(6);
@@ -130,7 +221,7 @@
                             Longitude: ${lon}<br>
                             Accuracy: ±${accuracy}m
                         </div>
-                        <b>Redirecting to ESP32...</b>
+                        <b>🔄 Redirecting to camera...</b>
                     `;
 
                     // Build URL with coordinates
@@ -142,14 +233,15 @@
                     }, 2000);
                 },
 
-                // Error callback
+                // Error
                 function(error) {
                     btn.disabled = false;
+                    btn.textContent = '📍 Capture GPS Location';
                     let errorMsg = '';
 
                     switch(error.code) {
                         case error.PERMISSION_DENIED:
-                            errorMsg = '❌ <b>Permission denied</b><br>Please allow location access in your browser settings and try again';
+                            errorMsg = '❌ <b>Permission denied</b><br>Please allow location access in your browser/app settings and try again';
                             break;
                         case error.POSITION_UNAVAILABLE:
                             errorMsg = '❌ <b>Position unavailable</b><br>GPS signal not available. Try moving to an open area';
@@ -172,6 +264,15 @@
                     maximumAge: 0
                 }
             );
+        }
+
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker registration failed'));
+            });
         }
     </script>
 </body>

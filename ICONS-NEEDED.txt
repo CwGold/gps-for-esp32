@@ -1,0 +1,21 @@
+ICON FILES NEEDED:
+
+Create these two PNG files:
+- icon-192.png (192x192 pixels)
+- icon-512.png (512x512 pixels)
+
+Quick creation method:
+1. Go to https://realfavicongenerator.net/
+2. Upload any image with a location pin or camera
+3. Download generated icons
+4. Rename to icon-192.png and icon-512.png
+5. Add to this repository
+
+Design suggestion:
+- Purple gradient background (#667eea to #764ba2)
+- White location pin icon 📍
+- Optional: "GRIZCAM" text
+
+Temporary workaround:
+The PWA will still work without icons, but won't look as polished.
+Browser will use a generic icon until you add custom ones.
