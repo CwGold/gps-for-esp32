@@ -3,10 +3,17 @@
   "short_name": "GRIZCAM GPS",
   "description": "Capture GPS location for GRIZCAM camera setup",
   "start_url": "/gps-for-esp32/",
+  "scope": "/gps-for-esp32/",
   "display": "standalone",
   "background_color": "#667eea",
   "theme_color": "#667eea",
   "orientation": "portrait",
+  "protocol_handlers": [
+    {
+      "protocol": "web+grizcam",
+      "url": "/gps-for-esp32/?source=%s"
+    }
+  ],
   "icons": [
     {
       "src": "icon-192.png",
